@@ -1,4 +1,5 @@
 import 'package:swagger_parser/src/parser/model/replacement_rule.dart';
+import 'package:swagger_parser/src/parser/model/type_mapping.dart';
 
 /// The configuration that the OpenApiParser uses
 class ParserConfig {
@@ -21,6 +22,7 @@ class ParserConfig {
     this.fallbackClient = 'fallback',
     this.inferRequiredFromNullable = false,
     this.preserveSchemaCasing = false,
+    this.typeMappings = const [],
   });
 
   /// Specification file content as [String]
@@ -102,4 +104,7 @@ class ParserConfig {
   /// - `user_status` → `userstatus`
   /// - `My-Class` → `MyClass`
   final bool preserveSchemaCasing;
+
+  /// {@macro type_mappings}
+  final List<TypeMapping> typeMappings;
 }

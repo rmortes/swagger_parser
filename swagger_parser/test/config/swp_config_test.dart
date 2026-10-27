@@ -1286,4 +1286,81 @@ void main() {
       );
     });
   });
+
+  group('Type Mappings Configuration', () {
+    test('should default to no type mappings', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+      });
+
+      final config = SWPConfig.fromYaml(yamlMap);
+      expect(config.typeMappings, isEmpty);
+    });
+
+    test('should parse type mappings from YAML', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+        'type_mappings': [
+          {
+            'schema_type': 'string',
+            'schema_format': 'date',
+            'target_type': 'Date',
+            'import': 'package:your_package/date.dart',
+          },
+          {
+            'schema_type': 'date',
+            'target_type': 'Date',
+          },
+        ],
+      });
+
+      final config = SWPConfig.fromYaml(yamlMap);
+      expect(config.typeMappings, hasLength(2));
+      expect(config.typeMappings[0].schemaType, equals('string'));
+      expect(config.typeMappings[0].schemaFormat, equals('date'));
+      expect(config.typeMappings[0].targetType, equals('Date'));
+      expect(
+        config.typeMappings[0].import,
+        equals('package:your_package/date.dart'),
+      );
+      expect(config.typeMappings[1].schemaType, equals('date'));
+      expect(config.typeMappings[1].schemaFormat, isNull);
+      expect(config.typeMappings[1].import, isNull);
+    });
+
+    test('should inherit type mappings from root config', () {
+      const rootConfig = SWPConfig(
+        outputDirectory: 'lib/shared',
+        typeMappings: [
+          TypeMapping(schemaType: 'string', targetType: 'Text'),
+        ],
+      );
+
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/user.yaml',
+        'name': 'user_api',
+      });
+
+      final config = SWPConfig.fromYaml(yamlMap, rootConfig: rootConfig);
+      expect(config.typeMappings, hasLength(1));
+      expect(config.typeMappings[0].targetType, equals('Text'));
+    });
+
+    test('should throw when target_type is missing', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+        'type_mappings': [
+          {'schema_type': 'string', 'schema_format': 'date'},
+        ],
+      });
+
+      expect(
+        () => SWPConfig.fromYaml(yamlMap),
+        throwsA(isA<ConfigException>()),
+      );
+    });
+  });
 }

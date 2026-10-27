@@ -297,6 +297,32 @@ void main() {
         schemaFileName: 'openapi.yaml',
       );
     });
+
+    test('type_mappings', () async {
+      await e2eTest(
+        'type_mappings',
+        (outputDirectory, schemaPath) => SWPConfig(
+          outputDirectory: outputDirectory,
+          schemaPath: schemaPath,
+          jsonSerializer: JsonSerializer.dartMappable,
+          putClientsInFolder: true,
+          typeMappings: const [
+            TypeMapping(
+              schemaType: 'string',
+              schemaFormat: 'date',
+              targetType: 'Date',
+              import: 'package:your_package/date.dart',
+            ),
+            TypeMapping(
+              schemaType: 'date',
+              targetType: 'Date',
+              import: 'package:your_package/date.dart',
+            ),
+          ],
+        ),
+        schemaFileName: 'openapi.yaml',
+      );
+    });
   });
 
   group('basic', () {

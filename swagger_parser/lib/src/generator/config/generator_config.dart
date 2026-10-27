@@ -2,6 +2,7 @@ import 'package:swagger_parser/src/generator/model/field_parser.dart';
 import 'package:swagger_parser/src/generator/model/json_serializer.dart';
 import 'package:swagger_parser/src/generator/model/programming_language.dart';
 import 'package:swagger_parser/src/parser/model/replacement_rule.dart';
+import 'package:swagger_parser/src/parser/model/type_mapping.dart';
 
 /// The configuration that the Generator uses
 class GeneratorConfig {
@@ -37,6 +38,7 @@ class GeneratorConfig {
     this.useFlutterCompute = false,
     this.generateUrlsConstants = false,
     this.fieldParsers = const [],
+    this.typeMappings = const [],
   });
 
   /// Optional. Set API name for folder and export file or merged output file
@@ -181,4 +183,7 @@ class GeneratorConfig {
 
   /// {@macro field_parsers}
   final List<FieldParser> fieldParsers;
+
+  /// {@macro type_mappings}
+  final List<TypeMapping> typeMappings;
 }

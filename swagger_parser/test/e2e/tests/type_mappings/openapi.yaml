@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: Type mappings
+  version: 1.0.0
+paths:
+  /events:
+    get:
+      operationId: getEvents
+      parameters:
+        - in: query
+          name: day
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+    post:
+      operationId: createEvent
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - day
+              properties:
+                day:
+                  type: date
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+components:
+  schemas:
+    Event:
+      type: object
+      required:
+        - day
+        - startsAt
+      properties:
+        day:
+          type: string
+          format: date
+        endDay:
+          type: string
+          format: date
+          nullable: true
+        startsAt:
+          type: string
+          format: date-time
+        holidays:
+          type: array
+          items:
+            type: string
+            format: date
+        name:
+          type: string

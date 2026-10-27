@@ -1,3 +1,8 @@
+## 1.46.0
+
+* Adds `type_mappings` to replace a schema `type` (and optionally `format`) with a
+  custom type, adding its import to the generated files that use it.
+
 ## 1.45.0
 
 * Adds `freezed_json_serialization` (default `true`) to generate Freezed models

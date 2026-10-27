@@ -24,22 +24,25 @@ final class FillController {
   GeneratedFile fillDtoContent(UniversalDataClass dataClass) => GeneratedFile(
         name:
             'models/${_resolveDtoFileBaseName(dataClass)}.${config.language.fileExtension}',
-        content: config.language.dtoFileContent(
-          dataClass,
-          jsonSerializer: config.jsonSerializer,
-          enumsToJson: config.enumsToJson,
-          fieldParsers: config.fieldParsers,
-          unknownEnumValue: config.unknownEnumValue,
-          markFilesAsGenerated: config.markFilesAsGenerated,
-          generateValidator: config.generateValidator,
-          useFreezed3: config.useFreezed3,
-          freezedJsonSerialization: config.freezedJsonSerialization,
-          useMultipartFile: config.useMultipartFile,
-          dartMappableConvenientWhen: config.dartMappableConvenientWhen,
-          useDartMappableNaming: config.useDartMappableNaming,
-          includeIfNull: config.includeIfNull,
-          useFlutterCompute: config.useFlutterCompute,
-          fallbackUnion: config.fallbackUnion,
+        content: _addTypeMappingImports(
+          _dataClassTypes(dataClass),
+          config.language.dtoFileContent(
+            dataClass,
+            jsonSerializer: config.jsonSerializer,
+            enumsToJson: config.enumsToJson,
+            fieldParsers: config.fieldParsers,
+            unknownEnumValue: config.unknownEnumValue,
+            markFilesAsGenerated: config.markFilesAsGenerated,
+            generateValidator: config.generateValidator,
+            useFreezed3: config.useFreezed3,
+            freezedJsonSerialization: config.freezedJsonSerialization,
+            useMultipartFile: config.useMultipartFile,
+            dartMappableConvenientWhen: config.dartMappableConvenientWhen,
+            useDartMappableNaming: config.useDartMappableNaming,
+            includeIfNull: config.includeIfNull,
+            useFlutterCompute: config.useFlutterCompute,
+            fallbackUnion: config.fallbackUnion,
+          ),
         ),
       );
 
@@ -88,23 +91,63 @@ final class FillController {
 
     return GeneratedFile(
       name: '$folderName/$fileName.${config.language.fileExtension}',
-      content: config.language.restClientFileContent(
-        restClient,
-        restClient.name.toPascal + postfix.toPascal,
-        markFilesAsGenerated: config.markFilesAsGenerated,
-        defaultContentType: config.defaultContentType,
-        extrasParameterByDefault: config.extrasParameterByDefault,
-        dioOptionsParameterByDefault: config.dioOptionsParameterByDefault,
-        addOpenApiMetadata: config.addOpenApiMetadata,
-        originalHttpResponse: config.originalHttpResponse,
-        useMultipartFile: config.useMultipartFile,
-        useFlutterCompute: config.useFlutterCompute,
-        fileName: fileName,
-        jsonSerializer: config.jsonSerializer,
-        generateUrlsConstants: config.generateUrlsConstants,
-        useDartMappableNaming: config.useDartMappableNaming,
+      content: _addTypeMappingImports(
+        _restClientTypes(restClient),
+        config.language.restClientFileContent(
+          restClient,
+          restClient.name.toPascal + postfix.toPascal,
+          markFilesAsGenerated: config.markFilesAsGenerated,
+          defaultContentType: config.defaultContentType,
+          extrasParameterByDefault: config.extrasParameterByDefault,
+          dioOptionsParameterByDefault: config.dioOptionsParameterByDefault,
+          addOpenApiMetadata: config.addOpenApiMetadata,
+          originalHttpResponse: config.originalHttpResponse,
+          useMultipartFile: config.useMultipartFile,
+          useFlutterCompute: config.useFlutterCompute,
+          fileName: fileName,
+          jsonSerializer: config.jsonSerializer,
+          generateUrlsConstants: config.generateUrlsConstants,
+          useDartMappableNaming: config.useDartMappableNaming,
+        ),
       ),
     );
+  }
+
+  Iterable<UniversalType> _dataClassTypes(UniversalDataClass dataClass) =>
+      dataClass is UniversalComponentClass
+          ? [
+              ...dataClass.parameters,
+              ...?dataClass.allOf?.properties,
+              ...?dataClass.undiscriminatedUnionVariants?.values
+                  .expand((e) => e),
+            ]
+          : const [];
+
+  Iterable<UniversalType> _restClientTypes(UniversalRestClient restClient) =>
+      restClient.requests.expand(
+        (r) => [
+          ...r.parameters.map((p) => p.type),
+          if (r.returnType != null) r.returnType!,
+        ],
+      );
+
+  /// Adds the imports of the [GeneratorConfig.typeMappings] used by [types]
+  String _addTypeMappingImports(
+    Iterable<UniversalType> types,
+    String content,
+  ) {
+    if (config.language != ProgrammingLanguage.dart || content.isEmpty) {
+      return content;
+    }
+    final usedTypes = types.map((t) => t.type).toSet();
+    final imports = config.typeMappings
+        .where((m) => m.import != null && usedTypes.contains(m.targetType))
+        .map((m) => "import '${m.import}';")
+        .toSet();
+    if (imports.isEmpty) {
+      return content;
+    }
+    return '${imports.join('\n')}\n$content';
   }
 
   /// Return [GeneratedFile] root client generated from given clients

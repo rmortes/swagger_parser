@@ -186,6 +186,18 @@ swagger_parser:
       parser_name: "CustomBoolParser"
       parser_absolute_path: "package:your_package/lib/utils/parsers/custom_bool_parser.dart"
 
+  # Optional. Replace a schema type (and optionally format) with a custom type.
+  #
+  # The first matching mapping wins, overriding the built-in types
+  # (e.g. `type: string, format: date` is `DateTime` by default).
+  # `schema_format` is optional: if omitted, any format matches.
+  # `import` (dart only) is added to every generated file that uses `target_type`.
+  # type_mappings:
+  #   - schema_type: "string"
+  #     schema_format: "date"
+  #     target_type: "Date"
+  #     import: "package:your_package/date.dart"
+
   # Optional. Skip parameters with names.
   skipped_parameters:
     - "X-Some-Token"

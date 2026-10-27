@@ -55,6 +55,7 @@ class SWPConfig {
     this.generateUrlsConstants = false,
     this.fieldParsers = const [],
     this.preserveSchemaCasing = false,
+    this.typeMappings = const [],
   });
 
   /// Internal constructor of [SWPConfig]
@@ -102,6 +103,7 @@ class SWPConfig {
     required this.generateUrlsConstants,
     required this.fieldParsers,
     required this.preserveSchemaCasing,
+    required this.typeMappings,
     this.fallbackUnion,
   });
 
@@ -393,6 +395,33 @@ class SWPConfig {
       fieldParsers = List.from(rootConfig!.fieldParsers);
     }
 
+    final rawTypeMappings = yamlMap['type_mappings'] as YamlList?;
+    List<TypeMapping>? typeMappings;
+    if (rawTypeMappings != null) {
+      typeMappings = [];
+      for (final m in rawTypeMappings) {
+        if (m is! YamlMap ||
+            m['schema_type'] is! String ||
+            m['target_type'] is! String ||
+            (m['schema_format'] != null && m['schema_format'] is! String) ||
+            (m['import'] != null && m['import'] is! String)) {
+          throw const ConfigException(
+            "Config parameter 'type_mappings' values must be List of maps with 'schema_type' and 'target_type', and optionally 'schema_format' and 'import'.",
+          );
+        }
+        typeMappings.add(
+          TypeMapping(
+            schemaType: m['schema_type'].toString(),
+            schemaFormat: m['schema_format']?.toString(),
+            targetType: m['target_type'].toString(),
+            import: m['import']?.toString(),
+          ),
+        );
+      }
+    } else if (rootConfig?.typeMappings != null) {
+      typeMappings = List.from(rootConfig!.typeMappings);
+    }
+
     // Default config
     final dc = SWPConfig(name: name, outputDirectory: outputDirectory);
 
@@ -446,6 +475,7 @@ class SWPConfig {
       includePaths: includePathsList ?? dc.includePaths,
       generateUrlsConstants: generateUrlsConstants ?? dc.generateUrlsConstants,
       preserveSchemaCasing: preserveSchemaCasing ?? dc.preserveSchemaCasing,
+      typeMappings: typeMappings ?? dc.typeMappings,
     );
   }
 
@@ -716,6 +746,16 @@ class SWPConfig {
   /// instead.
   final bool preserveSchemaCasing;
 
+  /// {@template type_mappings}
+  /// Optional. Set type mappings.
+  ///
+  /// Each mapping replaces a schema `type` (and optionally `format`) with
+  /// a custom type, adding its `import` to the generated files that use it.
+  /// The first matching mapping wins. Overrides the built-in types, e.g.
+  /// `type: string, format: date` is `DateTime` by default.
+  /// {@endtemplate}
+  final List<TypeMapping> typeMappings;
+
   /// Convert [SWPConfig] to [GeneratorConfig]
   GeneratorConfig toGeneratorConfig() {
     return GeneratorConfig(
@@ -749,6 +789,7 @@ class SWPConfig {
       useFlutterCompute: useFlutterCompute,
       generateUrlsConstants: generateUrlsConstants,
       fieldParsers: fieldParsers,
+      typeMappings: typeMappings,
     );
   }
 
@@ -775,6 +816,7 @@ class SWPConfig {
       fallbackClient: fallbackClient,
       inferRequiredFromNullable: inferRequiredFromNullable,
       preserveSchemaCasing: preserveSchemaCasing,
+      typeMappings: typeMappings,
     );
   }
 }

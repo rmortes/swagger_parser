@@ -2045,7 +2045,18 @@ class OpenApiParser {
         type = _schemaIdentifier(type);
       }
 
-      final defaultValue = map[_defaultConst]?.toString();
+      var format = map[_formatConst]?.toString();
+      var defaultValue = map[_defaultConst]?.toString();
+      final typeMapping = import == null
+          ? config.typeMappings.firstWhereOrNull((m) => m.matches(type, format))
+          : null;
+      if (typeMapping != null) {
+        type = typeMapping.targetType;
+        format = null;
+        // A raw default value can't be turned into the custom type
+        defaultValue = null;
+      }
+
       final (newName, description) = protectName(
         name,
         description: map[_descriptionConst]?.toString(),
@@ -2081,7 +2092,7 @@ class OpenApiParser {
           type: type,
           name: newName?.toCamel,
           description: description,
-          format: map[_formatConst]?.toString(),
+          format: format,
           jsonKey: name,
           defaultValue: protectDefaultValue(
             defaultValue,
