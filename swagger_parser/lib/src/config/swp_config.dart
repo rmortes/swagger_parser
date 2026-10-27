@@ -753,6 +753,7 @@ class SWPConfig {
   /// a custom type, adding its `import` to the generated files that use it.
   /// The first matching mapping wins. Overrides the built-in types, e.g.
   /// `type: string, format: date` is `DateTime` by default.
+  /// Multipart and form data fields use `String` for the matched types instead.
   /// {@endtemplate}
   final List<TypeMapping> typeMappings;
 

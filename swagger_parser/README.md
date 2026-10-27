@@ -192,6 +192,7 @@ swagger_parser:
   # (e.g. `type: string, format: date` is `DateTime` by default).
   # `schema_format` is optional: if omitted, any format matches.
   # `import` (dart only) is added to every generated file that uses `target_type`.
+  # Multipart and form data fields are sent as text, so matched types are `String` there.
   # type_mappings:
   #   - schema_type: "string"
   #     schema_format: "date"

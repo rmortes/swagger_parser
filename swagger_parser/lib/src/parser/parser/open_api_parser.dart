@@ -422,7 +422,11 @@ class OpenApiParser {
           for (final propName in properties.keys) {
             final propValue = properties[propName] as Map<String, dynamic>;
             final isRequired = requiredParameters.contains(propName);
-            final typeWithImport = _findType(propValue, isRequired: isRequired);
+            final typeWithImport = _findType(
+              propValue,
+              isRequired: isRequired,
+              formField: true,
+            );
             final currentType = typeWithImport.type;
             if (typeWithImport.import != null) {
               imports.add(typeWithImport.import!);
@@ -567,6 +571,7 @@ class OpenApiParser {
           parameterSchema,
           name: rawParameter[_nameConst].toString(),
           isRequired: isRequired,
+          formField: parameter[_inConst] == HttpParameterType.formData.name,
         );
 
         if (config.skippedParameters.contains(rawParameter[_nameConst])) {
@@ -1315,12 +1320,17 @@ class OpenApiParser {
   }
 
   /// Find type of map
+  ///
+  /// Set [formField] to `true` for multipart and form data fields: they are
+  /// sent as text and retrofit can't serialize a custom type there, so the
+  /// types matched by [ParserConfig.typeMappings] become `String`.
   ({UniversalType type, String? import}) _findType(
     Map<String, dynamic> map, {
     required bool isRequired,
     bool root = true,
     String? name,
     String? additionalName,
+    bool formField = false,
   }) {
     // Array
     if (map.containsKey(_typeConst) && map[_typeConst] == _arrayConst) {
@@ -1335,6 +1345,7 @@ class OpenApiParser {
         root: false,
         isRequired:
             true, // This doesn't affect itemDetails.nullable due to root:false
+        formField: formField,
       );
 
       final (newName, description) = protectName(
@@ -2050,7 +2061,10 @@ class OpenApiParser {
       final typeMapping = import == null
           ? config.typeMappings.firstWhereOrNull((m) => m.matches(type, format))
           : null;
-      if (typeMapping != null) {
+      if (typeMapping != null && formField) {
+        type = 'string';
+        format = null;
+      } else if (typeMapping != null) {
         type = typeMapping.targetType;
         format = null;
         // A raw default value can't be turned into the custom type

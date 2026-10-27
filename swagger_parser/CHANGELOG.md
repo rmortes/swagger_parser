@@ -2,6 +2,7 @@
 
 * Adds `type_mappings` to replace a schema `type` (and optionally `format`) with a
   custom type, adding its import to the generated files that use it.
+  Multipart and form data fields use `String` for the matched types instead.
 
 ## 1.45.0
 

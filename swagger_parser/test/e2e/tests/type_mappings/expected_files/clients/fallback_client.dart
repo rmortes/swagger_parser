@@ -25,7 +25,7 @@ abstract class FallbackClient {
   @MultiPart()
   @POST('/events')
   Future<Event> createEvent({
-    @Part(name: 'day') required Date day,
+    @Part(name: 'day') required String day,
     @Part(name: 'photo') File? photo,
   });
 }
