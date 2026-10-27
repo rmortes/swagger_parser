@@ -18,7 +18,7 @@ part 'family2_members_sealed.mapper.dart';
   Family2MembersSealedDog,
   Family2MembersSealedHuman,
   Family2MembersSealedUnknown
-])
+], hook: _Family2MembersSealedHook())
 sealed class Family2MembersSealed with Family2MembersSealedMappable {
   const Family2MembersSealed();
 
@@ -49,6 +49,29 @@ extension Family2MembersSealedDeserializer on Family2MembersSealed {
 
     throw FormatException(
         'Could not determine the correct type for Family2MembersSealed from: $json');
+  }
+}
+
+/// Lets the mapper of [Family2MembersSealed] decode it, e.g. `Family2MembersSealedMapper.fromMap`
+/// as retrofit does: dart_mappable can't pick a variant on its own.
+class _Family2MembersSealedHook extends MappingHook {
+  const _Family2MembersSealedHook();
+
+  // The variants inherit this hook as their superHook:
+  // while it decodes, let them through
+  static var _decoding = false;
+
+  @override
+  Object? beforeDecode(Object? value) {
+    if (_decoding || value is! Map<String, dynamic>) {
+      return value;
+    }
+    _decoding = true;
+    try {
+      return Family2MembersSealedDeserializer.tryDeserialize(value);
+    } finally {
+      _decoding = false;
+    }
   }
 }
 

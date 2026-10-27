@@ -9,6 +9,9 @@
   to put a separator between both, e.g. `PostInvoicesResponse$Data`.
 * Adds `dart_mappable_field_hooks` to add your own `MappingHook` to the nullable
   model (and list of models) fields, e.g. to decode them leniently.
+* Fixes decoding undiscriminated unions with dart_mappable through their mapper,
+  e.g. `XSealedMapper.fromMap` as retrofit does: the union gets a hook that picks
+  the variant.
 
 ## 1.45.0
 

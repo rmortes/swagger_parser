@@ -2957,7 +2957,7 @@ import 'dog.dart';
 
 part 'animal_sealed.mapper.dart';
 
-@MappableClass(includeSubClasses: [AnimalSealedCat, AnimalSealedDog])
+@MappableClass(includeSubClasses: [AnimalSealedCat, AnimalSealedDog], hook: _AnimalSealedHook())
 sealed class AnimalSealed with AnimalSealedMappable {
   const AnimalSealed();
 
@@ -3001,6 +3001,29 @@ extension AnimalSealedDeserializer on AnimalSealed {
 
 
     throw FormatException('Could not determine the correct type for AnimalSealed from: $json');
+  }
+}
+
+/// Lets the mapper of [AnimalSealed] decode it, e.g. `AnimalSealedMapper.fromMap`
+/// as retrofit does: dart_mappable can't pick a variant on its own.
+class _AnimalSealedHook extends MappingHook {
+  const _AnimalSealedHook();
+
+  // The variants inherit this hook as their superHook:
+  // while it decodes, let them through
+  static var _decoding = false;
+
+  @override
+  Object? beforeDecode(Object? value) {
+    if (_decoding || value is! Map<String, dynamic>) {
+      return value;
+    }
+    _decoding = true;
+    try {
+      return AnimalSealedDeserializer.tryDeserialize(value);
+    } finally {
+      _decoding = false;
+    }
   }
 }
 

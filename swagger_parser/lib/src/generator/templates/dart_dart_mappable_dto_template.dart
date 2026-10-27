@@ -469,8 +469,33 @@ $fallbackBlock
 
 ${indentation(4)}throw FormatException('Could not determine the correct type for $className from: \$json');
 ${indentation(2)}}
+}
+
+/// Lets the mapper of [$className] decode it, e.g. `${className}Mapper.fromMap`
+/// as retrofit does: dart_mappable can't pick a variant on its own.
+class ${_undiscriminatedUnionHookName(className)} extends MappingHook {
+${indentation(2)}const ${_undiscriminatedUnionHookName(className)}();
+
+${indentation(2)}// The variants inherit this hook as their superHook:
+${indentation(2)}// while it decodes, let them through
+${indentation(2)}static var _decoding = false;
+
+${indentation(2)}@override
+${indentation(2)}Object? beforeDecode(Object? value) {
+${indentation(4)}if (_decoding || value is! Map<String, dynamic>) {
+${indentation(6)}return value;
+${indentation(4)}}
+${indentation(4)}_decoding = true;
+${indentation(4)}try {
+${indentation(6)}return ${_deserializerExtensionName(className)}.tryDeserialize(value);
+${indentation(4)}} finally {
+${indentation(6)}_decoding = false;
+${indentation(4)}}
+${indentation(2)}}
 }''';
 }
+
+String _undiscriminatedUnionHookName(String className) => '_${className}Hook';
 
 String _generateDiscriminatorHelper(
     String className, Discriminator discriminator,
@@ -687,7 +712,8 @@ String _getMappableClassAnnotation(UniversalComponentClass dataClass,
     if (fallbackUnion != null && fallbackUnion.isNotEmpty) {
       subClasses.add('$className${fallbackUnion.toPascal}');
     }
-    return 'includeSubClasses: [${subClasses.join(', ')}]';
+    return 'includeSubClasses: [${subClasses.join(', ')}], '
+        'hook: ${_undiscriminatedUnionHookName(className)}()';
   }
   return '';
 }

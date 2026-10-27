@@ -14,7 +14,7 @@ part 'cat_dog_human_sealed.mapper.dart';
   CatDogHumanSealedCat,
   CatDogHumanSealedDog,
   CatDogHumanSealedHuman
-])
+], hook: _CatDogHumanSealedHook())
 sealed class CatDogHumanSealed with CatDogHumanSealedMappable {
   const CatDogHumanSealed();
 
@@ -40,6 +40,29 @@ extension CatDogHumanSealedDeserializer on CatDogHumanSealed {
 
     throw FormatException(
         'Could not determine the correct type for CatDogHumanSealed from: $json');
+  }
+}
+
+/// Lets the mapper of [CatDogHumanSealed] decode it, e.g. `CatDogHumanSealedMapper.fromMap`
+/// as retrofit does: dart_mappable can't pick a variant on its own.
+class _CatDogHumanSealedHook extends MappingHook {
+  const _CatDogHumanSealedHook();
+
+  // The variants inherit this hook as their superHook:
+  // while it decodes, let them through
+  static var _decoding = false;
+
+  @override
+  Object? beforeDecode(Object? value) {
+    if (_decoding || value is! Map<String, dynamic>) {
+      return value;
+    }
+    _decoding = true;
+    try {
+      return CatDogHumanSealedDeserializer.tryDeserialize(value);
+    } finally {
+      _decoding = false;
+    }
   }
 }
 
