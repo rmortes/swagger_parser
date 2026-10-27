@@ -7,6 +7,8 @@
   `enums_parent_prefix`, inline enums) after the class that holds them, e.g.
   `PostInvoicesResponseData` instead of `Data2`, and `parent_prefix_separator`
   to put a separator between both, e.g. `PostInvoicesResponse$Data`.
+* Adds `dart_mappable_field_hooks` to add your own `MappingHook` to the nullable
+  model (and list of models) fields, e.g. to decode them leniently.
 
 ## 1.45.0
 

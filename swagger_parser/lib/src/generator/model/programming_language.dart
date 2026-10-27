@@ -1,3 +1,4 @@
+import 'package:swagger_parser/src/generator/model/dart_mappable_field_hooks.dart';
 import 'package:swagger_parser/src/generator/model/field_parser.dart';
 import 'package:swagger_parser/src/generator/model/generated_file.dart';
 import 'package:swagger_parser/src/generator/model/json_serializer.dart';
@@ -57,6 +58,7 @@ enum ProgrammingLanguage {
     required List<FieldParser> fieldParsers,
     bool useFlutterCompute = false,
     String? fallbackUnion,
+    DartMappableFieldHooks? dartMappableFieldHooks,
   }) {
     switch (this) {
       case dart:
@@ -102,6 +104,7 @@ enum ProgrammingLanguage {
                 dartMappableConvenientWhen: dartMappableConvenientWhen,
                 useDartMappableNaming: useDartMappableNaming,
                 useFlutterCompute: useFlutterCompute,
+                fieldHooks: dartMappableFieldHooks,
               ),
           };
         }

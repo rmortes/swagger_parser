@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:swagger_parser/src/generator/model/dart_mappable_field_hooks.dart';
 import 'package:swagger_parser/src/generator/model/json_serializer.dart';
 import 'package:swagger_parser/src/generator/model/programming_language.dart';
 import 'package:swagger_parser/src/generator/templates/dart_import_dto_template.dart';
@@ -15,6 +16,7 @@ String dartDartMappableDtoTemplate(
   required bool useDartMappableNaming,
   bool useFlutterCompute = false,
   String? fallbackUnion,
+  DartMappableFieldHooks? fieldHooks,
 }) {
   // Use fallback union only if explicitly provided
   // Auto-fallback is disabled to avoid breaking existing tests
@@ -61,18 +63,24 @@ String dartDartMappableDtoTemplate(
           useDartMappableNaming: useDartMappableNaming)
       : '';
 
+  // Unions have no fields of their own
+  final hooks = isUnion ? null : fieldHooks;
+  final usesFieldHooks = hooks != null &&
+      dataClass.parameters
+          .any((e) => _fieldHook(e, dataClass, className, hooks) != null);
+
   final serializerClass =
       useFlutterCompute ? _generateFlutterComputeSerializer(className) : '';
   final asyncImport = useFlutterCompute ? "import 'dart:async';\n\n" : '';
 
   return '''
 $asyncImport${dartImportDtoTemplate(JsonSerializer.dartMappable)}
-${dartImports(imports: _getAllImports(dataClass, isUnion: isUnion))}
+${dartImports(imports: _getAllImports(dataClass, isUnion: isUnion))}${usesFieldHooks ? "import '${hooks.import}';\n\n" : ''}
 part '$classNameSnake.mapper.dart';
 
 ${descriptionComment(dataClass.description)}@MappableClass(${_getMappableClassAnnotation(dataClass, className, effectiveFallbackUnion)})
 ${_classModifier(isUnion: isUnion)}class $className ${parent != null ? "extends $parent " : ""}with ${className}Mappable {
-${_generateClassBody(dataClass: dataClass, className: className, useMultipartFile: useMultipartFile, isUnion: isUnion, dartMappableConvenientWhen: dartMappableConvenientWhen, isSimpleDataClass: isSimpleDataClass, useDartMappableNaming: useDartMappableNaming, fallbackUnion: effectiveFallbackUnion)}
+${_generateClassBody(dataClass: dataClass, className: className, useMultipartFile: useMultipartFile, isUnion: isUnion, dartMappableConvenientWhen: dartMappableConvenientWhen, isSimpleDataClass: isSimpleDataClass, useDartMappableNaming: useDartMappableNaming, fallbackUnion: effectiveFallbackUnion, fieldHooks: hooks)}
 }
 
 $additionalClasses$serializerClass''';
@@ -166,6 +174,8 @@ String getFields(
   UniversalComponentClass dataClass, {
   required bool useMultipartFile,
   bool isSimpleDataClass = false,
+  String? className,
+  DartMappableFieldHooks? fieldHooks,
 }) {
   // if this class has discriminated values, don't populate the discriminator field
   // in the parent class
@@ -173,7 +183,7 @@ String getFields(
       .where((it) => it.name != dataClass.discriminator?.propertyName)
       .toList();
   if (parameters.isNotEmpty) {
-    return '${_fieldsToString(parameters, useMultipartFile)}\n';
+    return '${_fieldsToString(parameters, useMultipartFile, (e) => fieldHooks == null || className == null ? null : _fieldHook(e, dataClass, className, fieldHooks))}\n';
   } else {
     return '';
   }
@@ -181,15 +191,16 @@ String getFields(
 
 String _fieldsToString(
   List<UniversalType> parameters,
-  bool useMultipartFile,
-) {
+  bool useMultipartFile, [
+  String? Function(UniversalType)? fieldHook,
+]) {
   final sortedByRequired = Set<UniversalType>.from(
     parameters.sorted((a, b) => a.compareTo(b)),
   );
   return sortedByRequired
       .mapIndexed(
         (i, e) => '${descriptionComment(e.description, tab: '  ')}'
-            '${_jsonKey(e)}${indentation(2)}final ${_renameUnionTypes(e.toSuitableType(ProgrammingLanguage.dart, useMultipartFile: useMultipartFile))} ${e.name};',
+            '${_fieldAnnotation(e, fieldHook?.call(e))}${indentation(2)}final ${_renameUnionTypes(e.toSuitableType(ProgrammingLanguage.dart, useMultipartFile: useMultipartFile))} ${e.name};',
       )
       .join('\n');
 }
@@ -206,12 +217,55 @@ String _parametersToString(List<UniversalType> parameters) {
       .join('\n');
 }
 
-/// if jsonKey is different from the name
-String _jsonKey(UniversalType t) {
-  if (t.jsonKey == null || t.name == t.jsonKey) {
+/// `@MappableField` with the key, if jsonKey is different from the name,
+/// and the [hook]
+String _fieldAnnotation(UniversalType t, String? hook) {
+  final arguments = [
+    if (t.jsonKey != null && t.name != t.jsonKey)
+      "key: '${protectJsonKey(t.jsonKey)}'",
+    if (hook != null) 'hook: $hook',
+  ];
+  if (arguments.isEmpty) {
     return '';
   }
-  return "${indentation(2)}@MappableField(key: '${protectJsonKey(t.jsonKey)}')\n";
+  return '${indentation(2)}@MappableField(${arguments.join(', ')})\n';
+}
+
+/// The [DartMappableFieldHooks] hook for [t], if it's a nullable model
+/// (or list of models) field of [dataClass]. Required fields get none:
+/// they can't be `null`, so a failure has to fail the parent.
+String? _fieldHook(
+  UniversalType t,
+  UniversalComponentClass dataClass,
+  String className,
+  DartMappableFieldHooks hooks,
+) {
+  final isNullable = t
+      .toSuitableType(
+        ProgrammingLanguage.dart,
+        useMultipartFile: false,
+      )
+      .endsWith('?');
+  // The models a class references are its imports
+  if (!isNullable || !dataClass.imports.contains(t.type)) {
+    return null;
+  }
+  final model = _renameUnionTypes(t.type);
+  // The list hook gets the item type, nullable if the list allows nulls
+  final (hook, typeArgument) = switch (t.wrappingCollections) {
+    [] => (hooks.objectHook, model),
+    [UniversalCollections.nullableList] => (hooks.listHook, model),
+    [UniversalCollections.nullableListNullableItem] => (
+        hooks.listHook,
+        '$model?'
+      ),
+    _ => (null, model),
+  };
+  if (hook == null) {
+    return null;
+  }
+  final location = protectJsonKey('$className.${t.jsonKey ?? t.name}');
+  return "$hook<$typeArgument>('$location')";
 }
 
 String getDefaultValue(UniversalType t) {
@@ -242,12 +296,13 @@ String _generateClassBody({
   required bool isSimpleDataClass,
   required bool useDartMappableNaming,
   String? fallbackUnion,
+  DartMappableFieldHooks? fieldHooks,
 }) {
   if (!isUnion) {
     // Regular class generation
     return '''
 ${indentation(2)}const $className(${getParameters(dataClass)});
-${getFields(dataClass, useMultipartFile: useMultipartFile, isSimpleDataClass: isSimpleDataClass)}
+${getFields(dataClass, useMultipartFile: useMultipartFile, isSimpleDataClass: isSimpleDataClass, className: className, fieldHooks: fieldHooks)}
 ${dartMappableConvenientWhen ? getDiscriminatorConvenienceMethods(dataClass, className, fallbackUnion) : ''}
 ${indentation(2)}static $className ${useDartMappableNaming ? 'fromMap' : 'fromJson'}(Map<String, dynamic> json) => ${className}Mapper.ensureInitialized().decodeMap<$className>(json);
 ''';

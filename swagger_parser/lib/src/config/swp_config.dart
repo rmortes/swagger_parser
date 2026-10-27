@@ -1,6 +1,7 @@
 import 'package:args/args.dart';
 import 'package:swagger_parser/src/config/config_exception.dart';
 import 'package:swagger_parser/src/generator/config/generator_config.dart';
+import 'package:swagger_parser/src/generator/model/dart_mappable_field_hooks.dart';
 import 'package:swagger_parser/src/generator/model/field_parser.dart';
 import 'package:swagger_parser/src/generator/model/json_serializer.dart';
 import 'package:swagger_parser/src/generator/model/programming_language.dart';
@@ -60,6 +61,7 @@ class SWPConfig {
     this.typeMappings = const [],
     this.inlineObjectsParentPrefix = false,
     this.parentPrefixSeparator = '',
+    this.dartMappableFieldHooks,
   });
 
   /// Internal constructor of [SWPConfig]
@@ -111,6 +113,7 @@ class SWPConfig {
     required this.inlineObjectsParentPrefix,
     required this.parentPrefixSeparator,
     this.fallbackUnion,
+    this.dartMappableFieldHooks,
   });
 
   /// Creates a [SWPConfig] from [YamlMap].
@@ -194,6 +197,27 @@ class SWPConfig {
     }
     final parentPrefixSeparator = rawParentPrefixSeparator as String? ??
         rootConfig?.parentPrefixSeparator;
+
+    final rawFieldHooks = yamlMap['dart_mappable_field_hooks'];
+    DartMappableFieldHooks? dartMappableFieldHooks;
+    if (rawFieldHooks != null) {
+      if (rawFieldHooks is! YamlMap ||
+          rawFieldHooks['object_hook'] is! String ||
+          rawFieldHooks['import'] is! String ||
+          (rawFieldHooks['list_hook'] != null &&
+              rawFieldHooks['list_hook'] is! String)) {
+        throw const ConfigException(
+          "Config parameter 'dart_mappable_field_hooks' must be a map with 'object_hook' and 'import', and optionally 'list_hook'.",
+        );
+      }
+      dartMappableFieldHooks = DartMappableFieldHooks(
+        objectHook: rawFieldHooks['object_hook'].toString(),
+        listHook: rawFieldHooks['list_hook']?.toString(),
+        import: rawFieldHooks['import'].toString(),
+      );
+    } else {
+      dartMappableFieldHooks = rootConfig?.dartMappableFieldHooks;
+    }
 
     final rawSkippedParameters = yamlMap['skipped_parameters'] as YamlList?;
     List<String>? skippedParameters;
@@ -500,6 +524,7 @@ class SWPConfig {
       inlineObjectsParentPrefix:
           inlineObjectsParentPrefix ?? dc.inlineObjectsParentPrefix,
       parentPrefixSeparator: parentPrefixSeparator ?? dc.parentPrefixSeparator,
+      dartMappableFieldHooks: dartMappableFieldHooks,
     );
   }
 
@@ -667,6 +692,9 @@ class SWPConfig {
   /// {@endtemplate}
   final String parentPrefixSeparator;
 
+  /// {@macro dart_mappable_field_hooks}
+  final DartMappableFieldHooks? dartMappableFieldHooks;
+
   /// List of parameter names that should skip during parsing
   final List<String> skippedParameters;
 
@@ -830,6 +858,7 @@ class SWPConfig {
       generateUrlsConstants: generateUrlsConstants,
       fieldParsers: fieldParsers,
       typeMappings: typeMappings,
+      dartMappableFieldHooks: dartMappableFieldHooks,
     );
   }
 

@@ -139,6 +139,17 @@ swagger_parser:
   # E.g. "$" gives `PostInvoicesResponse$Data$Provider`. Only letters, digits, `_` or `$`.
   parent_prefix_separator: ""
 
+  # Optional (dart & dart_mappable only). Hooks for the nullable fields that hold a model or
+  # a list of models, e.g. to decode them leniently: a field that fails to decode becomes null
+  # instead of failing the whole response. Each hook is a const MappingHook with one type
+  # argument (the model, or the list item: nullable if the list allows nulls) and one String
+  # argument (where the field is, `Class.json_key`):
+  # `@MappableField(hook: LenientHook<Provider>('Invoice.provider'))`.
+  # dart_mappable_field_hooks:
+  #   object_hook: "LenientHook"
+  #   list_hook: "LenientListHook" # Optional. Without it, list fields get no hook.
+  #   import: "package:your_package/lenient_hooks.dart"
+
   # Optional (dart only). Set 'true' to maintain backwards compatibility
   # when adding new values on the backend.
   unknown_enum_value: true

@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: dart_mappable field hooks
+  version: 1.0.0
+paths:
+  /invoices:
+    get:
+      operationId: getInvoice
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - owner
+                properties:
+                  owner:
+                    $ref: '#/components/schemas/Provider'
+                  data:
+                    type: object
+                    properties:
+                      invoice_number:
+                        type: string
+                      status:
+                        type: string
+                        enum: [paid, pending]
+                      provider:
+                        $ref: '#/components/schemas/Provider'
+                      lines:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            amount:
+                              type: number
+                      previous:
+                        type: array
+                        items:
+                          nullable: true
+                          allOf:
+                            - $ref: '#/components/schemas/Provider'
+                      tags:
+                        type: array
+                        items:
+                          type: string
+components:
+  schemas:
+    Provider:
+      type: object
+      properties:
+        name:
+          type: string

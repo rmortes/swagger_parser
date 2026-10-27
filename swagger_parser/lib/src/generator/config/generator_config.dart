@@ -1,3 +1,4 @@
+import 'package:swagger_parser/src/generator/model/dart_mappable_field_hooks.dart';
 import 'package:swagger_parser/src/generator/model/field_parser.dart';
 import 'package:swagger_parser/src/generator/model/json_serializer.dart';
 import 'package:swagger_parser/src/generator/model/programming_language.dart';
@@ -39,6 +40,7 @@ class GeneratorConfig {
     this.generateUrlsConstants = false,
     this.fieldParsers = const [],
     this.typeMappings = const [],
+    this.dartMappableFieldHooks,
   });
 
   /// Optional. Set API name for folder and export file or merged output file
@@ -186,4 +188,7 @@ class GeneratorConfig {
 
   /// {@macro type_mappings}
   final List<TypeMapping> typeMappings;
+
+  /// {@macro dart_mappable_field_hooks}
+  final DartMappableFieldHooks? dartMappableFieldHooks;
 }

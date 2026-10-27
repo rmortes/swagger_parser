@@ -1419,4 +1419,59 @@ void main() {
       );
     });
   });
+
+  group('dart_mappable Field Hooks Configuration', () {
+    test('should default to no hooks', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+      });
+
+      expect(SWPConfig.fromYaml(yamlMap).dartMappableFieldHooks, isNull);
+    });
+
+    test('should parse hooks from YAML', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+        'dart_mappable_field_hooks': {
+          'object_hook': 'LenientHook',
+          'list_hook': 'LenientListHook',
+          'import': 'package:your_package/lenient_hooks.dart',
+        },
+      });
+
+      final hooks = SWPConfig.fromYaml(yamlMap).dartMappableFieldHooks;
+      expect(hooks?.objectHook, equals('LenientHook'));
+      expect(hooks?.listHook, equals('LenientListHook'));
+      expect(hooks?.import, equals('package:your_package/lenient_hooks.dart'));
+    });
+
+    test('should allow hooks without list_hook', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+        'dart_mappable_field_hooks': {
+          'object_hook': 'LenientHook',
+          'import': 'package:your_package/lenient_hooks.dart',
+        },
+      });
+
+      expect(
+          SWPConfig.fromYaml(yamlMap).dartMappableFieldHooks?.listHook, isNull);
+    });
+
+    test('should throw when import is missing', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+        'dart_mappable_field_hooks': {'object_hook': 'LenientHook'},
+      });
+
+      expect(
+        () => SWPConfig.fromYaml(yamlMap),
+        throwsA(isA<ConfigException>()),
+      );
+    });
+  });
 }

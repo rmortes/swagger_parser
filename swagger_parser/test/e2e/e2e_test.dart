@@ -331,6 +331,27 @@ void main() {
       );
     });
 
+    test('dart_mappable_field_hooks', () async {
+      await e2eTest(
+        'dart_mappable_field_hooks',
+        (outputDirectory, schemaPath) => SWPConfig(
+          outputDirectory: outputDirectory,
+          schemaPath: schemaPath,
+          jsonSerializer: JsonSerializer.dartMappable,
+          putClientsInFolder: true,
+          inlineObjectsParentPrefix: true,
+          // The hook location must escape it
+          parentPrefixSeparator: r'$',
+          dartMappableFieldHooks: const DartMappableFieldHooks(
+            objectHook: 'LenientHook',
+            listHook: 'LenientListHook',
+            import: 'package:your_package/lenient_hooks.dart',
+          ),
+        ),
+        schemaFileName: 'openapi.yaml',
+      );
+    });
+
     test('type_mappings', () async {
       await e2eTest(
         'type_mappings',
