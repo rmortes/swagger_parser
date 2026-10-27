@@ -130,6 +130,15 @@ swagger_parser:
   # Optional. Set 'true' to set enum prefix from parent component.
   enums_parent_prefix: true
 
+  # Optional. Set 'true' to name inline objects after the class that holds them plus
+  # the property: `data` in `PostInvoicesResponse` is `PostInvoicesResponseData`
+  # instead of `Data`, `Data2`... With `enums_parent_prefix`, inline enums too.
+  inline_objects_parent_prefix: false
+
+  # Optional. Separator between parent and property in those names.
+  # E.g. "$" gives `PostInvoicesResponse$Data$Provider`. Only letters, digits, `_` or `$`.
+  parent_prefix_separator: ""
+
   # Optional (dart only). Set 'true' to maintain backwards compatibility
   # when adding new values on the backend.
   unknown_enum_value: true

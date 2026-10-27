@@ -7,6 +7,8 @@ import 'package:swagger_parser/src/generator/model/programming_language.dart';
 import 'package:swagger_parser/src/parser/swagger_parser_core.dart';
 import 'package:yaml/yaml.dart';
 
+final _identifierCharsRegExp = RegExp(r'^[A-Za-z0-9_$]*$');
+
 /// Swagger Parser Config
 class SWPConfig {
   /// Creates a [SWPConfig].
@@ -56,6 +58,8 @@ class SWPConfig {
     this.fieldParsers = const [],
     this.preserveSchemaCasing = false,
     this.typeMappings = const [],
+    this.inlineObjectsParentPrefix = false,
+    this.parentPrefixSeparator = '',
   });
 
   /// Internal constructor of [SWPConfig]
@@ -104,6 +108,8 @@ class SWPConfig {
     required this.fieldParsers,
     required this.preserveSchemaCasing,
     required this.typeMappings,
+    required this.inlineObjectsParentPrefix,
+    required this.parentPrefixSeparator,
     this.fallbackUnion,
   });
 
@@ -173,6 +179,21 @@ class SWPConfig {
         yamlMap['merge_clients'] as bool? ?? rootConfig?.mergeClients;
     final enumsParentPrefix = yamlMap['enums_parent_prefix'] as bool? ??
         rootConfig?.enumsParentPrefix;
+
+    final inlineObjectsParentPrefix =
+        yamlMap['inline_objects_parent_prefix'] as bool? ??
+            rootConfig?.inlineObjectsParentPrefix;
+
+    final rawParentPrefixSeparator = yamlMap['parent_prefix_separator'];
+    if (rawParentPrefixSeparator != null &&
+        (rawParentPrefixSeparator is! String ||
+            !_identifierCharsRegExp.hasMatch(rawParentPrefixSeparator))) {
+      throw const ConfigException(
+        r"Config parameter 'parent_prefix_separator' must be a String with only letters, digits, '_' or '$'.",
+      );
+    }
+    final parentPrefixSeparator = rawParentPrefixSeparator as String? ??
+        rootConfig?.parentPrefixSeparator;
 
     final rawSkippedParameters = yamlMap['skipped_parameters'] as YamlList?;
     List<String>? skippedParameters;
@@ -476,6 +497,9 @@ class SWPConfig {
       generateUrlsConstants: generateUrlsConstants ?? dc.generateUrlsConstants,
       preserveSchemaCasing: preserveSchemaCasing ?? dc.preserveSchemaCasing,
       typeMappings: typeMappings ?? dc.typeMappings,
+      inlineObjectsParentPrefix:
+          inlineObjectsParentPrefix ?? dc.inlineObjectsParentPrefix,
+      parentPrefixSeparator: parentPrefixSeparator ?? dc.parentPrefixSeparator,
     );
   }
 
@@ -627,6 +651,21 @@ class SWPConfig {
 
   /// Set 'true' to set enum prefix from parent component.
   final bool enumsParentPrefix;
+
+  /// {@template inline_objects_parent_prefix}
+  /// Optional. Set `true` to name inline objects after the class that holds
+  /// them plus the property, e.g. `data` in `PostInvoicesResponse` is
+  /// `PostInvoicesResponseData` instead of `Data`, `Data2`...
+  /// With [enumsParentPrefix], inline enums are named the same way.
+  /// {@endtemplate}
+  final bool inlineObjectsParentPrefix;
+
+  /// {@template parent_prefix_separator}
+  /// Optional. Separator between the parent and the property in the names
+  /// built by [inlineObjectsParentPrefix], e.g. `\$` gives
+  /// `PostInvoicesResponse\$Data\$Provider`. Only letters, digits, `_` or `\$`.
+  /// {@endtemplate}
+  final String parentPrefixSeparator;
 
   /// List of parameter names that should skip during parsing
   final List<String> skippedParameters;
@@ -818,6 +857,8 @@ class SWPConfig {
       inferRequiredFromNullable: inferRequiredFromNullable,
       preserveSchemaCasing: preserveSchemaCasing,
       typeMappings: typeMappings,
+      inlineObjectsParentPrefix: inlineObjectsParentPrefix,
+      parentPrefixSeparator: parentPrefixSeparator,
     );
   }
 }

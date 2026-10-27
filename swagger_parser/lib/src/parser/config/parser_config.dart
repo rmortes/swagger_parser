@@ -23,6 +23,8 @@ class ParserConfig {
     this.inferRequiredFromNullable = false,
     this.preserveSchemaCasing = false,
     this.typeMappings = const [],
+    this.inlineObjectsParentPrefix = false,
+    this.parentPrefixSeparator = '',
   });
 
   /// Specification file content as [String]
@@ -107,4 +109,10 @@ class ParserConfig {
 
   /// {@macro type_mappings}
   final List<TypeMapping> typeMappings;
+
+  /// {@macro inline_objects_parent_prefix}
+  final bool inlineObjectsParentPrefix;
+
+  /// {@macro parent_prefix_separator}
+  final String parentPrefixSeparator;
 }

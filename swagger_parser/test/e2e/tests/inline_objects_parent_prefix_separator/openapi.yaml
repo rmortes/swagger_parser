@@ -1,0 +1,102 @@
+openapi: 3.0.3
+info:
+  title: Inline objects parent prefix
+  version: 1.0.0
+paths:
+  /invoices:
+    post:
+      operationId: createInvoice
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      amount:
+                        type: number
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      status:
+                        type: string
+                        enum: [paid, pending]
+                      provider:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+  /trips/{id}:
+    put:
+      operationId: updateTrip
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      driver:
+                        $ref: '#/components/schemas/Driver'
+  /search:
+    get:
+      operationId: search
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          query:
+                            type: string
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+components:
+  schemas:
+    Driver:
+      type: object
+      properties:
+        name:
+          type: string
+        truck:
+          type: object
+          properties:
+            plate:
+              type: string

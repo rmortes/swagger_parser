@@ -1363,4 +1363,60 @@ void main() {
       );
     });
   });
+
+  group('Inline Objects Parent Prefix Configuration', () {
+    test('should default to no prefix and no separator', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+      });
+
+      final config = SWPConfig.fromYaml(yamlMap);
+      expect(config.inlineObjectsParentPrefix, isFalse);
+      expect(config.parentPrefixSeparator, isEmpty);
+    });
+
+    test('should parse prefix and separator from YAML', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+        'inline_objects_parent_prefix': true,
+        'parent_prefix_separator': r'$',
+      });
+
+      final config = SWPConfig.fromYaml(yamlMap);
+      expect(config.inlineObjectsParentPrefix, isTrue);
+      expect(config.parentPrefixSeparator, equals(r'$'));
+    });
+
+    test('should inherit prefix and separator from root config', () {
+      const rootConfig = SWPConfig(
+        outputDirectory: 'lib/shared',
+        inlineObjectsParentPrefix: true,
+        parentPrefixSeparator: '_',
+      );
+
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/user.yaml',
+        'name': 'user_api',
+      });
+
+      final config = SWPConfig.fromYaml(yamlMap, rootConfig: rootConfig);
+      expect(config.inlineObjectsParentPrefix, isTrue);
+      expect(config.parentPrefixSeparator, equals('_'));
+    });
+
+    test('should throw when the separator is not valid in a Dart name', () {
+      final yamlMap = YamlMap.wrap({
+        'schema_path': 'api/openapi.yaml',
+        'output_directory': 'lib/api',
+        'parent_prefix_separator': '-',
+      });
+
+      expect(
+        () => SWPConfig.fromYaml(yamlMap),
+        throwsA(isA<ConfigException>()),
+      );
+    });
+  });
 }

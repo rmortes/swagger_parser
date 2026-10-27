@@ -38,6 +38,48 @@ class OpenApiParser {
   String _schemaIdentifier(String input) =>
       config.preserveSchemaCasing ? input.toPreservedCase : input.toPascal;
 
+  /// Name of a class or enum nested in [parentClassName], e.g.
+  /// `PostInvoicesResponse` + `data` = `PostInvoicesResponseData`.
+  /// [parentClassName] is kept as is: it is a final name, which may contain
+  /// the separator or digits the replacement rules would drop.
+  String _childClassName(String parentClassName, String name) {
+    var childName = _schemaIdentifier(name);
+    for (final replacementRule in config.replacementRules) {
+      childName = replacementRule.apply(childName)!;
+    }
+    return '$parentClassName${config.parentPrefixSeparator}$childName';
+  }
+
+  /// With [ParserConfig.inlineObjectsParentPrefix], the name of a composed
+  /// class (allOf, union) built from where it's used, like the inline objects.
+  /// `null` when the option is off.
+  String? _inlineClassNameFromParent(
+    String? name,
+    String? additionalName,
+    String? parentClassName,
+  ) {
+    if (!config.inlineObjectsParentPrefix) {
+      return null;
+    }
+    if (name != null && parentClassName != null) {
+      return _childClassName(parentClassName, name);
+    }
+    final rootName = (additionalName ?? name)?.toPascal;
+    return rootName == null || rootName.isEmpty ? null : rootName;
+  }
+
+  /// Adds a number to [type] if an object with that name already exists
+  String _uniqueObjectName(String type) {
+    if (_objectNamesCount.containsKey(type)) {
+      _objectNamesCount[type] = _objectNamesCount[type]! + 1;
+      final uniqueType = '$type${_objectNamesCount[type]}';
+      stdout.writeln('Found duplicate object name: $uniqueType');
+      return uniqueType;
+    }
+    _objectNamesCount[type] = 1;
+    return type;
+  }
+
   /// `info` section in specification
   late final OpenApiInfo _apiInfo;
 
@@ -106,12 +148,15 @@ class OpenApiParser {
 
   static const _requestBodyNamePostfix = 'RequestBody';
 
+  /// Set [isFinalName] when [name] already is a class name, e.g. built by
+  /// [_childClassName]: normalizing it would drop the separator.
   UniversalEnumClass _getUniqueEnumClass({
     required String name,
     required Set<UniversalEnumItem> items,
     required String type,
     required String? defaultValue,
     required String? description,
+    bool isFinalName = false,
   }) {
     // Search _enumClasses for an enum with the same name and values
     final enumClass = _enumClasses.firstWhereOrNull(
@@ -135,7 +180,7 @@ class OpenApiParser {
 
     return UniversalEnumClass(
       originalName: name,
-      name: _schemaIdentifier(uniqueName),
+      name: isFinalName ? uniqueName : _schemaIdentifier(uniqueName),
       type: type,
       items: items,
       defaultValue: defaultValue,
@@ -765,9 +810,12 @@ class OpenApiParser {
   }
 
   /// Used to find properties in map
+  ///
+  /// [parentClassName] is the class the properties belong to, see [_findType].
   (Set<UniversalType>, Set<String>) _findParametersAndImports(
     Map<String, dynamic> map, {
     String? additionalName,
+    String? parentClassName,
   }) {
     final parameters = <UniversalType>{};
     final imports = <String>{};
@@ -825,6 +873,7 @@ class OpenApiParser {
           propertyValue,
           name: propertyName,
           additionalName: additionalName,
+          parentClassName: parentClassName,
           isRequired: (_apiInfo.schemaVersion == OAS.v2 && !config.useXNullable)
               ? isRequired
               : isRequired || hasAllOfKey || hasDefaultKey,
@@ -912,6 +961,9 @@ class OpenApiParser {
           final (findParameters, findImports) = _findParametersAndImports(
             map,
             additionalName: key,
+            parentClassName: config.inlineObjectsParentPrefix
+                ? _schemaIdentifier(key)
+                : null,
           );
           parameters.addAll(findParameters);
           imports.addAll(findImports);
@@ -1324,12 +1376,17 @@ class OpenApiParser {
   /// Set [formField] to `true` for multipart and form data fields: they are
   /// sent as text and retrofit can't serialize a custom type there, so the
   /// types matched by [ParserConfig.typeMappings] become `String`.
+  ///
+  /// [parentClassName] is the final name of the class that holds this type.
+  /// With [ParserConfig.inlineObjectsParentPrefix], inline objects and enums
+  /// are named after it, e.g. `PostInvoicesResponse` + `data`.
   ({UniversalType type, String? import}) _findType(
     Map<String, dynamic> map, {
     required bool isRequired,
     bool root = true,
     String? name,
     String? additionalName,
+    String? parentClassName,
     bool formField = false,
   }) {
     // Array
@@ -1342,6 +1399,7 @@ class OpenApiParser {
         arrayItemsSchema,
         name: name, // Or a modified name specific to items if needed
         additionalName: additionalName,
+        parentClassName: parentClassName,
         root: false,
         isRequired:
             true, // This doesn't affect itemDetails.nullable due to root:false
@@ -1415,6 +1473,7 @@ class OpenApiParser {
         mapValueSchema,
         name: name, // Or a modified name specific to values
         additionalName: name, // Or additionalName
+        parentClassName: parentClassName,
         root: false,
         isRequired:
             true, // This doesn't affect valueDetails.nullable due to root:false
@@ -1483,12 +1542,15 @@ class OpenApiParser {
       );
 
       var newName = variableName;
-      if (config.enumsParentPrefix && additionalName != null) {
-        newName = '$additionalName $newName'.toPascal;
-      }
-
-      for (final replacementRule in config.replacementRules) {
-        newName = replacementRule.apply(newName)!;
+      if (config.enumsParentPrefix && parentClassName != null) {
+        newName = _childClassName(parentClassName, newName);
+      } else {
+        if (config.enumsParentPrefix && additionalName != null) {
+          newName = '$additionalName $newName'.toPascal;
+        }
+        for (final replacementRule in config.replacementRules) {
+          newName = replacementRule.apply(newName)!;
+        }
       }
 
       final Set<UniversalEnumItem> items;
@@ -1506,6 +1568,7 @@ class OpenApiParser {
         type: map[_typeConst].toString(),
         defaultValue: protectDefaultValue(map[_defaultConst], isEnum: true),
         description: description,
+        isFinalName: config.enumsParentPrefix && parentClassName != null,
       );
 
       _enumClasses.add(enumClass);
@@ -1565,21 +1628,28 @@ class OpenApiParser {
         replacementRulesForRawSchema: config.replacementRulesForRawSchema,
       );
 
-      final (parameters, imports) = _findParametersAndImports(map);
-
-      var type = _schemaIdentifier(newName);
-
-      for (final replacementRule in config.replacementRules) {
-        type = replacementRule.apply(type)!;
+      String type;
+      // The root object of a response or body only has additionalName,
+      // which already is its full name
+      if (name != null && parentClassName != null) {
+        type = _childClassName(parentClassName, newName);
+      } else {
+        type = _schemaIdentifier(newName);
+        for (final replacementRule in config.replacementRules) {
+          type = replacementRule.apply(type)!;
+        }
       }
 
-      // Check for duplicate type names
-      if (_objectNamesCount.containsKey(type)) {
-        _objectNamesCount[type] = _objectNamesCount[type]! + 1;
-        type = '$type${_objectNamesCount[type]}';
-        stdout.writeln('Found duplicate object name: $type');
+      Set<UniversalType> parameters;
+      Set<String> imports;
+      if (config.inlineObjectsParentPrefix) {
+        // The properties need the final name of this class
+        type = _uniqueObjectName(type);
+        (parameters, imports) =
+            _findParametersAndImports(map, parentClassName: type);
       } else {
-        _objectNamesCount[type] = 1;
+        (parameters, imports) = _findParametersAndImports(map);
+        type = _uniqueObjectName(type);
       }
 
       if (_objectClasses.where((oc) => oc.name == type).isEmpty) {
@@ -1736,6 +1806,7 @@ class OpenApiParser {
               isRequired: isRequired, // Pass isRequired along
               name: name,
               additionalName: additionalName,
+              parentClassName: parentClassName,
             );
             // OpenAPI 3.0 expresses a nullable composed type with a sibling
             // `nullable: true` next to a single-element allOf/oneOf/anyOf, e.g.
@@ -1806,6 +1877,7 @@ class OpenApiParser {
               isRequired: nullItems.isEmpty && isRequired,
               name: name,
               additionalName: additionalName,
+              parentClassName: parentClassName,
             );
             ofType = type;
             ofImport = import;
@@ -1830,6 +1902,9 @@ class OpenApiParser {
               final refs = <String>{};
               final parameters = <UniversalType>{};
               final imports = SplayTreeSet<String>();
+              // The properties need the final name of the composed class
+              final allOfClassNameFromParent = _inlineClassNameFromParent(
+                  name, additionalName, parentClassName);
 
               for (final item in otherItems) {
                 if (item.containsKey(_refConst)) {
@@ -1843,6 +1918,7 @@ class OpenApiParser {
                       _findParametersAndImports(
                     item,
                     additionalName: name,
+                    parentClassName: allOfClassNameFromParent,
                   );
                   parameters.addAll(foundParameters);
                   imports.addAll(foundImports);
@@ -1863,7 +1939,8 @@ class OpenApiParser {
                 );
 
                 // Create a class to represent the allOf composition
-                final allOfClassName = newName!.toPascal;
+                final allOfClassName =
+                    allOfClassNameFromParent ?? newName!.toPascal;
                 _objectClasses.add(
                   UniversalComponentClass(
                     name: allOfClassName,
@@ -1881,10 +1958,10 @@ class OpenApiParser {
                 }
 
                 ofType = UniversalType(
-                  type: newName.toPascal,
+                  type: allOfClassName,
                   isRequired: isRequired, // Will be adjusted by nullItems check
                 );
-                ofImport = newName.toPascal;
+                ofImport = allOfClassName;
               } else {
                 // Fallback if allOf doesn't result in a clear composite object (e.g. allOf: [string, integer])
                 ofType =
@@ -1910,7 +1987,11 @@ class OpenApiParser {
                       config.replacementRulesForRawSchema,
                 );
 
-                final unionName = newName!.toPascal;
+                final unionNameFromParent = _inlineClassNameFromParent(
+                    name, additionalName, parentClassName);
+                final unionName = unionNameFromParent != null
+                    ? '${unionNameFromParent}Union'
+                    : newName!.toPascal;
                 final (imports, variantRefToProps) = _getImportsAndProps(
                   otherItems,
                   unionName,
@@ -2260,6 +2341,10 @@ class OpenApiParser {
         final (props, propImports) = _findParametersAndImports(
           item,
           additionalName: '${unionName}Variant$idx',
+          // Without the Union suffix: each serializer renames it its own way
+          parentClassName: config.inlineObjectsParentPrefix
+              ? '${unionName.replaceFirst(RegExp(r'Union$'), '')}Variant$idx'
+              : null,
         );
         imports.addAll(propImports);
         variantRefToProps[variantKey] = props;

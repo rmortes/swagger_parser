@@ -298,6 +298,39 @@ void main() {
       );
     });
 
+    test('inline_objects_parent_prefix', () async {
+      await e2eTest(
+        'inline_objects_parent_prefix',
+        (outputDirectory, schemaPath) => SWPConfig(
+          outputDirectory: outputDirectory,
+          schemaPath: schemaPath,
+          jsonSerializer: JsonSerializer.dartMappable,
+          putClientsInFolder: true,
+          inlineObjectsParentPrefix: true,
+        ),
+        schemaFileName: 'openapi.yaml',
+      );
+    });
+
+    test('inline_objects_parent_prefix_separator', () async {
+      await e2eTest(
+        'inline_objects_parent_prefix_separator',
+        (outputDirectory, schemaPath) => SWPConfig(
+          outputDirectory: outputDirectory,
+          schemaPath: schemaPath,
+          jsonSerializer: JsonSerializer.dartMappable,
+          putClientsInFolder: true,
+          inlineObjectsParentPrefix: true,
+          parentPrefixSeparator: r'$',
+          // Must not drop the index of the union variants
+          replacementRules: [
+            ReplacementRule(pattern: RegExp('[0-9]+'), replacement: ''),
+          ],
+        ),
+        schemaFileName: 'openapi.yaml',
+      );
+    });
+
     test('type_mappings', () async {
       await e2eTest(
         'type_mappings',

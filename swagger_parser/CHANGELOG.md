@@ -3,6 +3,10 @@
 * Adds `type_mappings` to replace a schema `type` (and optionally `format`) with a
   custom type, adding its import to the generated files that use it.
   Multipart and form data fields use `String` for the matched types instead.
+* Adds `inline_objects_parent_prefix` to name inline objects (and, with
+  `enums_parent_prefix`, inline enums) after the class that holds them, e.g.
+  `PostInvoicesResponseData` instead of `Data2`, and `parent_prefix_separator`
+  to put a separator between both, e.g. `PostInvoicesResponse$Data`.
 
 ## 1.45.0
 
